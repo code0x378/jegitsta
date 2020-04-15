@@ -1,0 +1,124 @@
+version: '3.7'
+
+services:
+  db:
+    container_name: db
+    image: 'postgres:12.0-alpine'
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=jetbrains
+      - POSTGRES_PASSWORD=jetbrains
+#      - POSTGRES_DB=jetbrains
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+
+  upsource:
+    container_name: upsource
+    image: jetbrains/upsource:2019.1.1644
+    ports:
+      - 8082:8080
+    volumes:
+      - ./data/upsource/backups:/opt/upsource/backups
+      - ./data/upsource/data:/opt/upsource/data
+      - ./data/upsource/logs:/opt/upsource/logs
+      - ./data/upsource/conf:/opt/upsource/conf
+      - ./data/upsource/temp:/opt/upsource/temp
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 2G
+    depends_on:
+      - hub
+
+  youtrack:
+    container_name: youtrack
+    image: jetbrains/youtrack:2020.1.1826
+    ports:
+      - 8081:8080
+    volumes:
+      - ./data/youtrack/backups:/opt/youtrack/backups
+      - ./data/youtrack/data:/opt/youtrack/data
+      - ./data/youtrack/logs:/opt/youtrack/logs
+      - ./data/youtrack/conf:/opt/youtrack/conf
+      - ./data/youtrack/temp:/opt/youtrack/temp
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 2G
+    depends_on:
+      - hub
+
+  teamcity:
+    container_name: teamcity
+    image: jetbrains/teamcity-server:2019.2.2
+    ports:
+      - 8083:8111
+    volumes:
+      - ./data/teamcity/datadir:/data/teamcity_server/datadir
+      - ./data/teamcity/logs:/opt/teamcity/logs
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 2G
+    depends_on:
+      - hub
+
+  teamcity-agent:
+    container_name: teamcity-agent
+    image: jetbrains/teamcity-agent:2019.2.2
+    environment:
+      - "SERVER_URL=teamcity:8111"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 2G
+    depends_on:
+      - teamcity
+      - hub
+
+  hub:
+    container_name: hub
+    image: jetbrains/hub:2020.1.12144
+    ports:
+      - 8080:8080
+    volumes:
+      - ./data/hub/backups:/opt/hub/backups
+      - ./data/hub/data:/opt/hub/data
+      - ./data/hub/logs:/opt/hub/logs
+      - ./data/hub/conf:/opt/hub/conf
+      - ./data/hub/temp:/opt/hub/temp
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 1G
+    depends_on:
+      - db
+
+  nginx:
+    container_name: nginx
+    build: ./nginx
+    ports:
+      - '80:80'
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 128M
+    depends_on:
+      - hub
